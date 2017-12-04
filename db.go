@@ -46,3 +46,22 @@ func (db *MongoDB) registerBook(b Book) error {
 
 	return nil
 }
+
+/*
+Returns the number of books in collection
+*/
+func (db *MongoDB) CountBooks() int {
+	session, err := mgo.Dial(db.DatabaseURL)
+	if err != nil {
+		panic(err)
+	}
+	defer session.Close()
+
+	count, err := session.DB(db.DatabaseName).C(db.CollectionName).Count()
+	if err != nil {
+		fmt.Printf("Error in Count(): %v", err.Error())
+		return -1
+	}
+	// Returns -1 if error, else returns count
+	return count
+}
