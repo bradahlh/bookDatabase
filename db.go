@@ -1,8 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	"log"
+	"net/http"
 
 	"gopkg.in/mgo.v2"
 )
@@ -17,20 +18,29 @@ type MongoDB struct {
 }
 
 /*
-Init connects to DB
+Registers a book in the database
 */
-func (db *MongoDB) init() {
-	session, err := mgo.Dial(db.DatabaseURL)
+func (db *MongoDB) registerHandler(w http.ResponseWriter, r *http.Request) {
+	// Gets JSON data from request body and puts it in object
+	decoder := json.NewDecoder(r.Body)
+
+	// Creates new Book to parse JSON into
+	var book Book
+	book.ID = db.CountBooks() + 1
+	err := decoder.Decode(&book)
 	if err != nil {
-		log.Fatal("Could not connect to database", err)
+		fmt.Fprintln(w, "Error decoding JSON data: ", err)
 	}
-	defer session.Close()
+	db.registerBook(&book)
+	defer r.Body.Close()
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintln(w, book)
 }
 
 /*
 Registers a book in the DB
 */
-func (db *MongoDB) registerBook(b Book) error {
+func (db *MongoDB) registerBook(b *Book) error {
 	session, err := mgo.Dial(db.DatabaseURL)
 	if err != nil {
 		panic(err)
@@ -38,7 +48,7 @@ func (db *MongoDB) registerBook(b Book) error {
 	defer session.Close()
 
 	// Inserts book in DB
-	err = session.DB(db.DatabaseName).C(db.CollectionName).Insert(b)
+	err = session.DB(db.DatabaseName).C(db.CollectionName).Insert(&b)
 	if err != nil {
 		fmt.Printf("Error in Insert(): %v", err.Error())
 		return err
